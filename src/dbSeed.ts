@@ -1,4 +1,4 @@
-import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
+import { collection, getDocs, writeBatch, doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { Restaurant, MenuItem } from "./types";
 
@@ -58,7 +58,7 @@ export const SEED_RESTAURANTS: Restaurant[] = [
     cuisine: "學校營養午餐",
     address: "臺北市大安區和平東路二段94號 (國北教大實小廚房)",
     phone: "02-2735-6115",
-    imageUrl: "/src/assets/images/school_lunch_bento_1781938858378.jpg",
+    imageUrl: "/school_lunch_bento_1781938858378.jpg",
     rating: 4.9,
     isActive: true,
     ownerId: "owner_school_lunch"
@@ -267,10 +267,21 @@ export async function seedDatabaseIfEmpty(): Promise<boolean> {
     let schoolLunchMissing = false;
 
     if (!snapshot.empty) {
-      // Check if school lunch itself is missing from the DB
+      // Check if school lunch itself is missing or outdated in the DB
       const schoolLunchSnap = snapshot.docs.find((d) => d.id === "rest_school_lunch");
       if (!schoolLunchSnap) {
         schoolLunchMissing = true;
+      } else {
+        const data = schoolLunchSnap.data();
+        const latestSchoolLunch = SEED_RESTAURANTS.find((r) => r.id === "rest_school_lunch");
+        if (latestSchoolLunch && (
+          data.imageUrl !== latestSchoolLunch.imageUrl ||
+          data.name !== latestSchoolLunch.name ||
+          data.description !== latestSchoolLunch.description
+        )) {
+          console.log("Updating outdated school lunch restaurant information in Firestore...");
+          await setDoc(doc(db, "restaurants", "rest_school_lunch"), latestSchoolLunch);
+        }
       }
     }
 
